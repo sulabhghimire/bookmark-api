@@ -4,6 +4,8 @@ import { INestApplication, ValidationPipe } from "@nestjs/common";
 import { PrismaService } from "../src/prisma/prisma.service";
 import * as pactum from 'pactum';
 import { AuthDto } from "src/auth/dto";
+import { EditUserDto } from "src/user/dto";
+import { CreateBookMarkDto, EditBookMarkDto } from "src/bookmark/dto";
 
 describe('App e2e', ()=>{
 
@@ -93,7 +95,7 @@ describe('App e2e', ()=>{
       it('should throw exception if password is empty', ()=>{
         return pactum.spec().post('auth/login').withBody({
           email: dto.email
-        })
+        }).expectStatus(400);
       });
 
       it('should throw exception if no body provided', ()=>{
@@ -101,7 +103,7 @@ describe('App e2e', ()=>{
       })
 
       it('Should throw error if password is incorrect', ()=>{
-        return pactum.spec().post('auth/login').withBody({...dto, password: 'randomPass'}).expectStatus(403);
+        return pactum.spec().post('auth/login').withBody({...dto, password: 'randomPass'}).expectStatus(401);
       });
 
       it('Should SignIn', ()=>{
@@ -134,31 +136,75 @@ describe('App e2e', ()=>{
 
     describe('Edit User', () => {
 
+      const dto:EditUserDto = {
+        firstName: "Sulabh",
+        email: "newsulav@gmail.com"
+      };
+
+      it('Should Edit user', ()=>{
+        return pactum.spec().patch('users').withHeaders({
+          Authorization: 'Bearer $S{userAt}'
+        }).withBody(dto).expectStatus(200).expectBodyContains(dto.firstName).expectBodyContains(dto.email);
+      })
     });
 
   });
 
   describe("Bookmarks", ()=>{
 
+    describe('Get Empty BookMarks', () => {
+      it('Should return empty bookmarks', () => {
+        return pactum.spec().get('bookmarks').withHeaders({Authorization: 'Bearer $S{userAt}'}).expectStatus(200).expectBody([]);
+      })
+    });
+
     describe('Create BookMarks', () => {
+      const dto:CreateBookMarkDto = {
+        title: 'First BookMark',
+        link: "www.youtube.com",
+        description: "Youtube One"
+      }
+
+      it('Should create a bookmark', () => {
+        return pactum.spec().post('bookmarks').withHeaders({Authorization: 'Bearer $S{userAt}'}).withBody(dto).expectStatus(201).stores("bookmarkId", 'id');
+      })
 
     });
 
-    describe('Get BookMarks', () => {
-
+    describe('Get All BookMarks for the loggedIN User', () => {
+      it('Should return non-empty bookmarks of length 1', () => {
+        return pactum.spec().get('bookmarks').withHeaders({Authorization: 'Bearer $S{userAt}'}).expectStatus(200).expectJsonLength(1);
+      });
     });
+
 
     describe('Get BookMark By Id', () => {
-
+      it('Should return bookMark For a ID', () => {
+        return pactum.spec().get('bookmarks/{id}').withPathParams('id' , '$S{bookmarkId}').withHeaders({Authorization: 'Bearer $S{userAt}'}).expectStatus(200).expectBodyContains('$S{bookmarkId}');
+      })
     });
 
     describe('Edit BookMark', () => {
+      const dto:EditBookMarkDto = {
+        description: "I edited the description"
+      }
 
+      it('Should return bookMark For a ID', () => {
+        return pactum.spec().patch('bookmarks/{id}').withPathParams('id' , '$S{bookmarkId}').withHeaders({Authorization: 'Bearer $S{userAt}'}).withBody(dto).expectStatus(200).expectBodyContains('$S{bookmarkId}').expectBodyContains(dto.description);
+      })
     });
 
     describe('Delete BookMark', () => {
+      it('Should return delete bookmark for given id', () => {
+        return pactum.spec().delete('bookmarks/{id}').withPathParams('id' , '$S{bookmarkId}').withHeaders({Authorization: 'Bearer $S{userAt}'}).expectStatus(204);
+      });
 
+      it('Should return empty bookmarks', () => {
+        return pactum.spec().get('bookmarks').withHeaders({Authorization: 'Bearer $S{userAt}'}).expectStatus(200).expectBody([]);
+      })
     });
+
+
 
   });
 });
