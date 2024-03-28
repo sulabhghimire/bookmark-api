@@ -36,6 +36,12 @@ describe('App e2e', ()=>{
     app.close();
   })
 
+  describe('Health', () => {
+    it('Should perform health check', () => {
+      return pactum.spec().get('health').expectStatus(200);
+    })
+  })
+
   describe('Auth', ()=>{
 
     const dto:AuthDto = {
